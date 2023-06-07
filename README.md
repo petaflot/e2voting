@@ -100,5 +100,29 @@ I mean, you get to compromise a very large number of systems of an entire commun
 
 At his stage, probably the most interesting one to mention : the main *hashing* algorithm is memory addresses (which people can share or collect "randomly"[^bruteforce] in order to ensure the validity of the data) that - by design - can only yield unique values. Furthermore, as many safety elements (in addition to the voters' name which isn't really safety anyway) can be added as desired and these can be gathered from a number of sources each with limited trust (or whose communication channels are potentially untrusted)
 
-# Did you know?
-Early Sunday November 27, 2022, the author woke up suddenly : while doing some permutations in a dream, he had realized he may have put his finger on something actually useful. It was just short of 4am. He immediately got up to take a few notes for the following 2-3 hours or so, took some more rest and then spent the rest of the day making a proof-of-concept code that would actually execute (the morning notes were little more than pseudo-code)
+## I'm-not-who-I-pretend-I-am
+
+This one is tricky : a troll sets up a dummy ballot server and uses it to query each TrustAuthority for each voter, then uses this data to submit votes on other (legit) ballot servers (providing it has the required SecretID for each voter : this is a decent failsafe, but is it enough?)
+
+It is not sure how to fully get around that issue : 
+* should a TrustAuthority response depend on the poll question? probably yes
+* should a TrustAuthority response depend on the host:port values for a ballot server? definitely yes : this way, generic searches are done **in reverse** and pushed to the ballot server
+
+At this point, it makes sense to consider dropping TrustAuthorities altogether.
+
+
+# Notes
+## In general...
+
+An algorithm can be expressed (or defined) in a variety of languages, but an algorithm does not express (or define) a specific language. Therefore, a language a language can express (or define) a multitude of algorithms so a language is a higher-level structure than an algorithm.
+
+## Security
+It is recommended to setup a *somewhat secure and authenticated* (ie. ssh/VPN) transmission channel between every instance ; this MAY be included in the future.
+
+## Polling options
+It has been debated wether a limited set of options should be made available to a voter ; reasons are both technical and "ethical" to **not** limit the user in valid choices. Voters are responsible to cast their vote for the correct entity. In some cases, ballot instances may decide to use a vector-based approach to concatenate values such as "Yes", "yes", "YES" into one.
+
+## Did you know?
+Early Sunday November 27, 2022, the author woke up suddenly : while doing some permutations in a dream, he had realized he may have put his finger on something actually useful. It was just short of 4am. He immediately got up to take a few notes for the following 2 hours or so, took some more rest and then spent the rest of the day making a proof-of-concept code that would actually execute (the morning notes were little more than pseudo-code).
+
+
