@@ -8,4 +8,7 @@ conf = {
 }
 
 from hashlib import md5
-hash = md5
+from shared_funcs import enc
+def hash( data ):
+	#return md5(data).digest()
+	return enc(md5(data).hexdigest())

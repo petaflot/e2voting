@@ -20,11 +20,13 @@ def increment(dic, key, inc = 1):
 		dic[key] = inc
 
 
-async def voter_full_id( voter_name, providers, stats_dict ):
+async def voter_full_id( voter_name, providers, stats_dict, ballotter ):
 	"""
 		a helper function known by everybody ; simply concatenate hashes IN THE CORRECT ORDER
 
 		the correct order is the one specified in trustees.list
+
+		balloter is a tuple of the form ( str, int )
 
 	"""
 	async def get_hash( voter_name, host, port ):
@@ -41,14 +43,14 @@ async def voter_full_id( voter_name, providers, stats_dict ):
 
 				data = await reader.read()
 				#print(f'Received from {(host,port)}: {data}')
-				logging.debug(f'Received from {(host,port)}: {data}')
+				#logging.debug(f'Received from {(host,port)}: {data}')
 				return data
 			finally:
 				writer.close()
 				await writer.wait_closed()
 		
-	# TODO make sure this is good async
 	#print(f"{providers = }")
+	# TODO make sure this is good async
 	try:
 		return b''.join([ await get_hash( voter_name, *provider ) for provider in providers ])
 	except TypeError:

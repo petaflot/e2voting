@@ -4,9 +4,13 @@
 
 import asyncio
 import logging
+import urllib.request
+import base64
+import json
+from datetime import datetime
 
 from shared_funcs import enc, dec, recv_bytes, send_bytes, voter_full_id
-import devel
+from constants import PORT_HTTP, LISTEN
 
 STATS = {}
 
@@ -14,7 +18,7 @@ class Voter:
 	"""
 
 		This class represents an individual voter and defines the necessary
-		fuctions to interact with the system.
+		functions to interact with the system.
 
 	"""
 	def __init__(self, voter_id):
@@ -34,27 +38,57 @@ class Voter:
 				ballot_server_addr, ballot_server_port = enc(ballot_server_addr), int(ballot_server_port)
 			except ValueError:
 				ballot_server_addr = enc(ballot_server_addr)
-				ballot_server_port = devel.PORT_POLLING
+				ballot_server_port = PORT_POLLING
 		else:
 			ballot_server_addr, ballot_server_port = host_port
-		d = {}
-		# TODO: retrieve parameters from http (json/XML)
-		d['authority'] = devel.AUTHORITY_NAME
-		d['poll_open'] = devel.POLL_OPEN
-		d['poll_port'] = devel.PORT_POLLING
-		d['poll_early_results'] = devel.POLL_EARLY_RESULTS
-		d['ballot_competitors'] = devel.BALLOT_COMPETITORS
-		d['trustees'] = devel.TRUSTEES
+
+		# TODO allow connection over SSL
+		#print('http://'+':'.join([ballot_server_addr, str(ballot_server_port)])+'/config.json')
+		data = urllib.request.urlopen('http://'+':'.join([ballot_server_addr, str(ballot_server_port)])+'/config.json').read()
+		ballot_config = {}
+
+		# TODO write a function that does this a bit more automatically and re-usable for other projects
+		for key in json.loads(data):
+			key, val = base64.b64decode(enc(key)), base64.b64decode(enc(json.loads(data)[key]))
+			match key:
+				case b'poll_port':
+					val = int.from_bytes( val, 'big' )
+				case b'datetime':
+					import pendulum
+					print("msg1",enc(pendulum.now().strftime(DATETIME_FMT)))
+					ts = ''.join(str(val).rsplit(':',1))
+					print("msg2",ts)
+					val = datetime.strptime(ts, DATETIME_FMT)
+				case b'anticipated_results':
+					val = bool(val)
+				case b'trustees':
+					val = [(HP[0], int(HP[1])) for HP in [hp.split(':',1) for hp in dec(val).split('\n')]]
+			ballot_config[key] = val
+
+		data = urllib.request.urlopen('http://'+':'.join([ballot_server_addr, str(ballot_server_port)])+'/trustees.json').read()
+		#print(f"{data = }")
+		for key in json.loads(data):
+			key, val = base64.b64decode(enc(key)), base64.b64decode(enc(json.loads(data)[key]))
+			match key:
+				case b'trustees':
+					val = [(HP[0], int(HP[1])) for HP in [hp.split(':',1) for hp in dec(val).split('\n')]]
+					#print(f"{val = }")
+				case _:
+					print(f"WARNING: trustees data contains unknown key {key}")
+			ballot_config[key] = val
+
 
 		# TODO not so great when using a GUI, better not to store it (or even prompt for it) until right before the vote is submitted ; sqlite storage if required
-		d['secret_id'] = int(input(f"SecretID for {devel.AUTHORITY_NAME} (0x????????????) "),0).to_bytes(6,'big')
+		ballot_config[b'secret_id'] = int(input(f"SecretID for {ballot_config[b'authority']} (0x????????????) "),0).to_bytes(6,'big')
 
 		try:
-			self.ballots[devel.QUESTION][(ballot_server_addr, ballot_server_port)] = d
+			self.ballots[ballot_config[b'question']][(ballot_server_addr, ballot_server_port)] = ballot_config
 		except KeyError:
-			self.ballots[devel.QUESTION] = {(ballot_server_addr, ballot_server_port): d}
+			self.ballots[ballot_config[b'question']] = {(ballot_server_addr, ballot_server_port): ballot_config}
 
-		print(f"Added ballot @{ballot_server_addr}:{ballot_server_port} for question:\n\t{dec(devel.QUESTION)}")	# TODO persistent storage with sqlite
+		print(f"Added ballot @{ballot_server_addr}:{ballot_server_port} for question:\n\t{dec(ballot_config[b'question'])}")	# TODO persistent storage with sqlite
+		#print(f"{ballot_config[b'secret_id'] = }")
+		#print(self.ballots[ballot_config[b'question']][(ballot_server_addr, ballot_server_port)][b'trustees'])
 	
 	def ballots_list(self):
 		# TODO make a prettier output
@@ -95,29 +129,31 @@ class Voter:
 		elif question is None:
 			raise Exception("Won't do that, makes little sense")
 		else:
-			trustees = self.ballots[question][ballotter]['trustees']
-			for t in trustees.keys():
+			trustees = self.ballots[question][ballotter][b'trustees']
+			for t in trustees:
+				# TODO reset the stats from time to time
 				try:				STATS[t]
-				except KeyError:	STATS[t] = trustees[t]
+				except KeyError:	STATS[t] = {}
 
 			#print(f"{list(trustees.keys()) = }")
-			voter_id = await voter_full_id( self.voter_id, list(trustees.keys()), STATS )
+			port = self.ballots[question][ballotter][b'poll_port']
+			voter_id = await voter_full_id( self.voter_id, trustees, STATS, (ballotter,port) )
 			answer = get_answer( question ) if answer is None else answer
-			secretID = self.ballots[question][ballotter]['secret_id']
-			port = self.ballots[question][ballotter]['poll_port']
+			#print(self.ballots[question][ballotter].keys())
+			secretID = self.ballots[question][ballotter][b'secret_id']
 			print(f"will submit {answer} to {ballotter[0]}:{port} as {voter_id} with SecretID {hex(int.from_bytes(secretID,'big'))}")
 			try:
 				reader, writer = await asyncio.open_connection(ballotter[0], port)
 				try:
 					for value in (voter_id, secretID, answer):
 						await send_bytes( writer, value )
-					#print("all values sent, waiting for confirmation ID")
+					print("all values sent, waiting for confirmation ID")
 
 					verification_key = int.from_bytes(await recv_bytes(reader),'big')	# verification ID as per poc.py
 					if not verification_key:
 						print("""ERROR: vote could could not be cast ; possible causes include :
 	- your vote was already recorded
-	- there was a TrustAuthority problem""")
+	- there was a TrustAuthority problem ; try again later (and report the issue if this persists)""")
 						return False
 					else:
 						print(f'Verification key received from {(ballotter[0],port)}: {hex(verification_key)}')
@@ -135,7 +171,8 @@ class Voter:
 
 async def main( voter_id ):
 	V = Voter( voter_id )
-	await V.register_ballot( (devel.BALLOT_SERVER, devel.PORT_HTTP) )
+	# TODO prompt for or read from args/ncofig/whatever
+	await V.register_ballot( (LISTEN, PORT_HTTP) )
 	await V.submit_vote()
 
 if __name__ == '__main__':

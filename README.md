@@ -1,4 +1,4 @@
-# e2voting
+# e²voting
 An attempt to make a clear, concise (and therefore cheap) e-voting system
 
 
@@ -93,23 +93,29 @@ There are basically no sessions to hi-jack : a voter sends his credentials and b
 
 ## Trojan horses, malware attacks, XSS attacks, eavesdropping, drive-by and other web attacks
 
-I mean, you get to compromise a very large number of systems of an entire community for a continuous duration ; although it doesn't have to last for weeks on end it is very unlikely to avoid detection.
+For such an attack to work you need to compromise a very large number of systems of an entire community for a continuous duration (the duration of the poll) ; although it doesn't have to last for weeks on end it is very unlikely to avoid detection.
 
 
 ## Birthday attack, brute-force attacks
 
 At his stage, probably the most interesting one to mention : the main *hashing* algorithm is memory addresses (which people can share or collect "randomly"[^bruteforce] in order to ensure the validity of the data) that - by design - can only yield unique values. Furthermore, as many safety elements (in addition to the voters' name which isn't really safety anyway) can be added as desired and these can be gathered from a number of sources each with limited trust (or whose communication channels are potentially untrusted)
 
-## I'm-not-who-I-pretend-I-am
+## Replay attacks, Spoofing
 
-This one is tricky : a troll sets up a dummy ballot server and uses it to query each TrustAuthority for each voter, then uses this data to submit votes on other (legit) ballot servers (providing it has the required SecretID for each voter : this is a decent failsafe, but is it enough?)
+A troll sets up a dummy ballot server and uses it to query each TrustAuthority for each voter, then uses this data to submit votes on other (legit) ballot servers (providing it has the required SecretID for each voter : this is already a decent failsafe but may not be enough)
 
-It is not sure how to fully get around that issue : 
-* should a TrustAuthority response depend on the poll question? probably yes
-* should a TrustAuthority response depend on the host:port values for a ballot server? definitely yes : this way, generic searches are done **in reverse** and pushed to the ballot server
+To get around that issue, a TrustAuthority reponse is tailored for each BallotMiddleMan instance ; Voters are able to get their own (and only their own) hashed partial voterID because they are identified (TODO, wrap the protocol in crypto) while when a BallotMiddleMan (they must be able to request partial hashes for any voterID) requests the connection is closed and the results are pushed to the ballot server and this in turn offers some protection against spoofing (unless it is done at the network level).
 
-At this point, it makes sense to consider dropping TrustAuthorities altogether.
+In addition to that and once the Voter-TrustAuthority communication chanel is secured and authenticated (TODO), a partial hash merely based on the question is not secure enough and must also be time-dependant and expire after the Ballot closes. Also, we know that from the TrustAuthority point-of-view, requests are always done in this order:
 
+1. Voters and Trustees lists are "locked", secure communication is confirmed and established between Trustees and BallotMiddleMan
+2. BallotMiddleMan publishes the question as well as deadlines and list of trustees
+3. *Voters take their time to think about the answer and confirm or establish secure communication channels with BallotMiddleMan and Trustees*
+4. **BallotMiddleMan requests partial hash for invite generation**
+5. **BallotMiddleMan requests partial hash for ballot "paper" generation**
+6. **Voter requests partial hash to cast the vote**
+
+As a consequence, there are two intervals in time where a partial hash could potentially be fraudulently used ; this interval is relatively short (usually no more than a few hours or even minutes since a Voter client can wait (TODO) until the poll actually opens before pushing an answer that was prepared locally some time before. While nowadays a voting process spans over a time of a few days, in the future this will be much shorter (at least technically, people will actually be able to *vote-and-forget* for a much longer period while still being able to change their mind.
 
 # Notes
 ## In general...

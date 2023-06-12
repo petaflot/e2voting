@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Ballot server : {{dec(BMM.question)}} (by {{dec(BMM.authority)}})</title>
+</head>
+<body>
+	<ul id="navigation">
+	{% for item in navigation %}
+		<li><a href="{{ item.href }}">{{ item.caption }}</a></li>
+	{% endfor %}
+	</ul>
+
+	<h1>{{dec(BMM.question)}}</h1>
+	<h2>This is ballot server authority <strong>{{dec(BMM.authority)}}</strong></h2>
+	<p>This is the HTTP entry point for a ballot server instance as per the <a href="https://github.com/petaflot/e2voting">e²voting project</a>.</p>
+
+	<h2>Result section</h2>
+		<!-- TODO show summary -->
+		{{BMM.concatenate_votes()}}
+
+	<h2>Server configuration</h2>
+	<table>
+		<tr>
+			<th>Authority name</th>
+			<td>{{dec(BMM.authority)}}</td>
+		</tr>
+		<tr>
+			<th>Question submitted</th>
+			<td>{{dec(BMM.question)}}</td>
+		</tr>
+		<tr>
+			<th>Poll open on:</th>
+			<td>{{BMM.poll_opens}}</td>
+		</tr>
+		<tr>
+			<th>Poll closes on:</th>
+			<td>{{BMM.poll_closes}}</td>
+		</tr>
+		<tr>
+			<th>Anticipated results available:</th>
+			<td>{{BMM.anticipated_results}}</td>
+		</tr>
+	</table>
+
+	<h2>Server Statistics</h2>
+	<table>
+		<tr>
+			<th><a href="/voters/">Registered voters</a></th>
+			<td>{{len(BMM.voters)}}</td>
+		</tr>
+		<tr>
+			<th>Poll progress</th>
+			<td>{{round(100*len(BMM.invites)/len(BMM.voters),2)}}%</td>
+		</tr>
+		<tr>
+			<th>Vote frequency</th>
+			<td>TODO</td>
+		</tr>
+	</table>
+
+
+	<h2>Frequently Asked Questions (FAQ)</h2>
+	<ol>
+		<li><strong>How do I vote?</strong></li>
+			<ol>
+				<li>Request your BallotPaperID from <a href="/contact/">the ballot authority</a></li>
+				<li>If you have not done so, download <a href="/software/">the client software</a></li>
+				<li>Using the app, cast your vote</li>
+			</ol>
+	</ol>
+
+</body>
+</html>

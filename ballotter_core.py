@@ -7,6 +7,7 @@
 """
 import asyncio
 import logging
+import pendulum
 
 from shared_funcs import dec, enc, voter_full_id, send_bytes, recv_bytes, int_as_bytes
 from constants import ENCODING, PORT_INVITES, PORT_POLLING, PORT_HTTP, TIMEZONE, LISTEN, INVITE_ERROR_INT
@@ -32,17 +33,20 @@ class BallotMiddleMan:
 		  verify a voter's identity before providing this information)
 
 	"""
-	def __init__( self, authority, question, trustees, voters, host, encoding ):
+	def __init__( self, loop, authority, question, trustees, voters, host, encoding ):
+		self.loop= loop				# event loop
 		self.authority = authority	# just a name/reference, used for data gathering
 		self.question = question	# it's good to know what question we're answering
 		self.host = host			# the same for all services
 		self.encoding = encoding	# encoding everything to ensure consistency of the data
 		self.total_possible_votes = len(voters)
+		self.voters = voters
+		self.trustees = trustees
 		self.result = {}
 
 	@classmethod
-	async def init( self, authority, question, trustees, voters, host, encoding = 'utf-8' ):
-		self = BallotMiddleMan( authority, question, trustees, voters, host, encoding )
+	async def init( self, loop, authority, question, trustees, voters, host, encoding = 'utf-8' ):
+		self = BallotMiddleMan( loop, authority, question, trustees, voters, host, encoding )
 
 		# preparing trust authorities
 		self.trustees = [ ( *t.split(b'\t',2)[:2], ) for t in trustees ]
@@ -50,24 +54,27 @@ class BallotMiddleMan:
 
 		print("generating invites...", end=' ')
 		# the value id(v) is not used, it's just a redundant placeholder that may be used for verification
-		self.invites = { await voter_full_id(v, self.trustees, STATS ): id(v) for v in voters}
+		self.invites = { await voter_full_id(v, self.trustees, STATS, (host, PORT_POLLING) ): id(v) for v in voters}
 
 		if len(self.invites) != self.total_possible_votes:	# should be unnecessary, just a safety measure
 			raise Exception("INIT: Number of invites does not match number of electors ({len(self.invites)}/{len(self.total_possible_votes})")
 		else:
 			print("done!")
 
-		print("TODO: invites_listener() and http_listen() are not active!")
-		for v in voters:
-			try:
-				print(f'''Ballot 'paper' ID: {hex(self.request_auth( await voter_full_id(v, self.trustees, STATS) ))} for {v}''')
-			except KeyError:
-				# this is just here for the example
-				print(f'''ERROR: cannot get ballot paper for {v}''')
+		# devel leftover, keeping for now. this should only be done on request!
+		#for v in voters:
+		#	try:
+		#		print(f'''Ballot 'paper' ID: {hex(self.request_auth( await voter_full_id(v, self.trustees, STATS) ))} for {v}''')
+		#	except KeyError:
+		#		# this is just here for the example
+		#		print(f'''ERROR: cannot get ballot paper for {v}''')
 
-		#await self.invites_listener()	# TODO start server (new thread?) ; uncommenting blocks
-		#await self.http_listen()		# TODO fix event loop stuff (new thread?) ; uncommenting crashes
+		# TODO make a a prompt or config of some sort for this value
+		self.anticipated_results = False
+
 		print("ballot server is ready :-)")
+		loop.create_task( self.open_poll() )
+		loop.create_task( self.invites_listener() )
 		return self
 	
 	async def http_listen( self, port = PORT_HTTP ):
@@ -122,13 +129,19 @@ class BallotMiddleMan:
 		async with server:
 			await server.serve_forever()
 
-	async def open_poll( self, port = PORT_POLLING ):
+	async def open_poll( self, poll_opens = pendulum.now(TIMEZONE), poll_duration = {'days': 1}, port = PORT_POLLING ):
 		"""
 
 			opens the port to listen for incoming votes
 
 		"""
-		print(f'''The question, open to {len(self.invites)} voters, is :\n\t"{dec(self.question)}"''')
+		self.ballot_server_port = port
+		self.poll_opens = poll_opens
+		if poll_duration is None:
+			raise Exception("TODO make this interactive")
+		else:
+			self.poll_closes = self.poll_opens.add(**poll_duration)
+		print(f'''The question, open to {len(self.invites)} voters, is :\n\t"{dec(self.question)}" ; it is open since {self.poll_opens} until {self.poll_closes}''')
 		server = await asyncio.start_server(self.ballot_server_callback, self.host, port)
 		address = ', '.join(str(sock.getsockname()) for sock in server.sockets)
 		print(f"{self.authority}: listening for votes on {address}")
@@ -143,6 +156,7 @@ class BallotMiddleMan:
 
 			TODO: make this one-time only? see "generating invites..." in self.init()
 		"""
+		#print(self.invites)
 		return id(self.invites[voter])
 
 	def submit_vote( self, voter_full_id, secret, value ):
@@ -150,16 +164,16 @@ class BallotMiddleMan:
 			the few CPU cycles (and associated network traffic) it takes this function to execute are the _only_ 
 			places where voter/vote can be sniffed (matched)
 		"""
-		#print("trying to submit vote:", value)
 		try:
 			if id( self.invites[ voter_full_id ]) == secret:
 				self.invites.pop( voter_full_id )	# in some rare cases, may also raise KeyError
 				self.result[ secret ] = value
+				print(f"+1: {value}")
 				return id(self.result[secret])
 			else:
 				raise KeyError
 		except KeyError:
-			#print(f"submit FAIL for {voter_full_id}")
+			print(f"submit FAIL for {voter_full_id}: {value}")
 			logging.debug(f"submit FAIL for {voter_full_id}: {value}")
 	
 	def verify_vote( self, secret, index ):
@@ -182,8 +196,11 @@ class BallotMiddleMan:
 		"""
 			return a summary of the results. this data must be public at the very least when the ballot is closed
 		"""
-		from collections import Counter
-		return Counter( self.result.values() )
+		if not self.anticipated_results and pendulum.now() < self.poll_closes:
+			return "Results are not available at the moment"
+		else:
+			from collections import Counter
+			return Counter( self.result.values() )
 
 	async def ballot_server_callback( self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
 		""" Callback function for handling incoming server functions.
@@ -222,10 +239,10 @@ class BallotMiddleMan:
 		writer.close()
 		await writer.wait_closed()
 
+"""
 async def main( authority, question, trustees, voters, host ):
 	BMM = await BallotMiddleMan.init( authority, question, trustees, voters, host, ENCODING )
-	await BMM.open_poll()
-
+	#await BMM.open_poll()
 
 if __name__ == '__main__':
 	from sys import argv
@@ -233,7 +250,7 @@ if __name__ == '__main__':
 		# whut? why doesn't this work? TypeError: a bytes-like object is required, not 'str'
 		#voters = [v.rstrip('b\n') for v in open(argv[1],'rb').readlines()]
 		# this double-nested generator works but is not as pretty and probably not optimal
-		voters = [ v.rstrip(b'\n') for v in [v for v in open(argv[1],'rb').readlines()] ]
+		voters = tuple([ v.rstrip(b'\n') for v in [v for v in open(argv[1],'rb').readlines()] ])
 		trustees = [ l.rstrip(b'\n') for l in open(argv[2],'rb').readlines() ]
 	except FileNotFoundError:
 		print(f"usage: {argv[0]} <voters.list> <trustees.list>")
@@ -251,3 +268,4 @@ if __name__ == '__main__':
 
 	print()
 	asyncio.run( main( authority, question, trustees, voters, host ) )
+"""

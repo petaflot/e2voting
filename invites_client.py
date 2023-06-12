@@ -18,7 +18,7 @@ def print_invite( userID, inviteID ):
 
 	"""
 	if inviteID == INVITE_ERROR_INT:
-		print(f"ERROR: no invite available for {userID}")
+		print(f"ERROR: no invite available for {userID} ; did you use the full, concatenated ID?")
 	else:
 		print(f"{hex(inviteID) = }")
 

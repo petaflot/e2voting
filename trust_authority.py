@@ -48,6 +48,7 @@ class TrustAuthority:
 	
 		:param reader: Reader stream
 		:param writer: Writer stream
+
 		"""
 		request = await reader.read(MAX_MESSAGE_LEN)
 	
@@ -65,16 +66,23 @@ class TrustAuthority:
 		print(f"received: {request}")
 		logging.debug(f"received: {request}")
 
+		# if client is BallotMiddleMan (known thanks to authenticated communication channel TODO):
+		# TODO open return chanel and echo request
+
+		# TODO response must be tailored to each BallotMiddleMan server instance, so it cannot be used on other instances with the same question in a sort of replay attack
 		return_message = self.hashfunc( request )
 	
+		# if client is BallotMiddleMan (known thanks to authenticated communication channel TODO):
+		# TODO close connection now and send reponse through polling port (with slightly improved protocol)
+
 		# Send response
 		if return_message is not None:
-			#print(f"Send: {return_message}")
-			logging.debug(f"Send: {return_message}")
+			print(f"Send: {return_message}")
+			#logging.debug(f"Send: {return_message}")
 			writer.write(return_message)
 		else:
-			#print(f"Nothing to send")
-			logging.debug(f"Nothing to send")
+			print(f"Nothing to send")
+			#logging.debug(f"Nothing to send")
 
 	
 		await writer.drain()
