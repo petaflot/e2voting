@@ -8,6 +8,25 @@ Besides security (where e-voting is often lamer than traditional voting), cost i
 
 It is interesting to note that the core of the code (the part that really matters) basically amounts to some 15-20 lines. So it's **very** short. Security doesn't only depend on the code though, there's a substantial part of *reverse social engineering* that I believe makes this entire concept really strong. I would really appreciate comments, especially if I'm wrong.
 
+## Quick setup
+
+Open some terms, preferably in terminal emulator such as [tmux](https://github.com/tmux/tmux/wiki) or [GNU screen](https://www.gnu.org/software/screen/) ; then, start the following processes each in its own term:
+
+    ./trust_authority.py 0
+    ./trust_authority.py 1
+    ./ballotter.py voters.list trustees.list
+    ./invites_client.py
+    ./voter_cli.py <voterID>
+
+1. in the `balotter.py` prompt, hit `[enter]` three times to accept the default values (you may change them but don't complain if something breaks TODO test+fix if needed - this project is still experimental)
+1. choose a voter name (valid choices are "alice", "bob", "charles")
+1. In each `trust_authority.py` shell, look for the corresponding hash value for the chosen voterID
+1. in the `invites_client.py` prompt, type the **full secret ID** of a voter : it is simply a concatenation of <hash_0><hash_1>...<hash_n> ; copy the value of `hex(inviteID)` (ie. '0x7f7f2965a890')
+1. in the `voter_cli.py` prompt, enter the hex value of inviteID and press `[enter]` ; you are then prompted for the answer to the question
+1. once the answer is confirmed and sent, you receive a secret hex verification key that you can use in combination with your inviteID and your answer to make sure your vote weas not tampered with (TODO)
+1. visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) (unless you have changed this) to check poll progress and results
+
+
 # Problems with voting mechanisms (traditional and electronic)
 
 * **complexity and missing transparency**: these are probably the most important problems, especially with electronic voting ; this will not be discussed as a whole, but rather broken down into sub-parts, just keep on reading.
@@ -100,7 +119,7 @@ For such an attack to work you need to compromise a very large number of systems
 
 At his stage, probably the most interesting one to mention : the main *hashing* algorithm is memory addresses (which people can share or collect "randomly"[^bruteforce] in order to ensure the validity of the data) that - by design - can only yield unique values. Furthermore, as many safety elements (in addition to the voters' name which isn't really safety anyway) can be added as desired and these can be gathered from a number of sources each with limited trust (or whose communication channels are potentially untrusted)
 
-## Replay attacks, Spoofing
+## Replay attacks
 
 A troll sets up a dummy ballot server and uses it to query each TrustAuthority for each voter, then uses this data to submit votes on other (legit) ballot servers (providing it has the required SecretID for each voter : this is already a decent failsafe but may not be enough)
 

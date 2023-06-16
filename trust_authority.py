@@ -23,7 +23,8 @@ class TrustAuthority:
 
 		this ensures a high level of anonymity and high security
 	"""
-	def __init__( self, name, hash, desc = None ):
+	def __init__( self, seq_id, name, hash, desc = None ):
+		self.seq_id = seq_id
 		self.name = name
 		if desc: self.desc = desc
 
@@ -63,7 +64,7 @@ class TrustAuthority:
 		# which implements the callback as a method instance, which would give
 		# you access to the host information at least.
 
-		print(f"received: {request}")
+		#print(f"received: {request}")
 		logging.debug(f"received: {request}")
 
 		# if client is BallotMiddleMan (known thanks to authenticated communication channel TODO):
@@ -77,11 +78,11 @@ class TrustAuthority:
 
 		# Send response
 		if return_message is not None:
-			print(f"Send: {return_message}")
+			print(f"Send for voterID {request}: hash{self.seq_id} = {return_message}")
 			#logging.debug(f"Send: {return_message}")
 			writer.write(return_message)
 		else:
-			print(f"Nothing to send")
+			print(f"WARNING: Nothing to send!")
 			#logging.debug(f"Nothing to send")
 
 	
@@ -103,5 +104,5 @@ if __name__ == '__main__':
 
 	conf = importlib.import_module(f"sample_configs.trustee_{trustee_id}")
 
-	TA = TrustAuthority( conf.conf.pop('name'), conf.hash, conf.conf.pop('desc',None) )
+	TA = TrustAuthority( trustee_id, conf.conf.pop('name'), conf.hash, conf.conf.pop('desc',None) )
 	asyncio.run( TA.run( *conf.conf.pop('serve') ) )

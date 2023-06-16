@@ -20,6 +20,7 @@ async def index():
 			dec = dec,
 			enc = enc,
 			len = len,
+			round = round,
 		)
 
 @app.route("/config.json")

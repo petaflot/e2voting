@@ -10,9 +10,11 @@
 	{% endfor %}
 	</ul>
 
-	<h1>{{dec(BMM.question)}}</h1>
-	<h2>This is ballot server authority <strong>{{dec(BMM.authority)}}</strong></h2>
+	<h1>This is ballot server authority <strong>{{dec(BMM.authority)}}</strong></h1>
 	<p>This is the HTTP entry point for a ballot server instance as per the <a href="https://github.com/petaflot/e2voting">e²voting project</a>.</p>
+
+	<h2>The question</h2>
+	<p>{{dec(BMM.question)}}</p>
 
 	<h2>Result section</h2>
 		<!-- TODO show summary -->
@@ -48,9 +50,13 @@
 			<th><a href="/voters/">Registered voters</a></th>
 			<td>{{len(BMM.voters)}}</td>
 		</tr>
+		<!--tr>
+			<th>Poll progress</th>
+			<td>invites: {{len(BMM.invites)}} voters: {{len(BMM.voters)}}%</td>
+		</tr-->
 		<tr>
 			<th>Poll progress</th>
-			<td>{{round(100*len(BMM.invites)/len(BMM.voters),2)}}%</td>
+			<td>{{round(100*(len(BMM.voters)-len(BMM.invites))/len(BMM.voters),2)}}%</td>
 		</tr>
 		<tr>
 			<th>Vote frequency</th>
