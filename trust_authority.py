@@ -104,5 +104,22 @@ if __name__ == '__main__':
 
 	conf = importlib.import_module(f"sample_configs.trustee_{trustee_id}")
 
+	print("""Welcome to to the trust authority TCP/IP client-server app.
+
+This component provides secret "hashes" for a given voterID. In order for this type of
+instance to make sense, communication to the ballot authority (at the very least) must 
+be authenticated and secure TODO.
+
+It is possible to give each voter their secret hash in paper form (preferably in a 
+machine-readable form such as a qr-code) if and only if they show in person and
+provide a proof of their identity such as:
+	- ID papers
+	- secret handshake
+	- biometric identification
+	- <you-name-it>
+	- a combination of the above
+Once the voter has been identified, provide them with their hash and off they go.
+""")
+
 	TA = TrustAuthority( trustee_id, conf.conf.pop('name'), conf.hash, conf.conf.pop('desc',None) )
 	asyncio.run( TA.run( *conf.conf.pop('serve') ) )

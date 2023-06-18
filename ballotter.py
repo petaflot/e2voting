@@ -90,6 +90,16 @@ if __name__ == '__main__':
 		raise SystemExit
 	
 	# TODO acept command-line arguments for PORT_* and LISTEN
+	print("""Welcome to the "ballot authority" node.
+
+This app is a TCP/IP client-server that allows requesting the answer to an arbitrary question.
+It is not possible to restrict the answers to a specific set : in this way, it is similar to
+the "wisdom-of-the-crowd"[^1] paradigm.
+
+Note: before you start, make sure all trust authorities are up and running!
+
+[^1]: https://en.wikipedia.org/wiki/Wisdom_of_the_crowd
+""")
 
 	authority = enc(input(f"Authority ID/Name [{dec(devel.AUTHORITY_NAME)}]: "))
 	authority = devel.AUTHORITY_NAME if authority == b'' else authority

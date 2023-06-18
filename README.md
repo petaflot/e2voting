@@ -19,17 +19,17 @@ Open some terms, preferably in terminal emulator such as [tmux](https://github.c
     ./voter_cli.py <voterID>
 
 1. in the `balotter.py` prompt, hit `[enter]` three times to accept the default values (you may change them but don't complain if something breaks TODO test+fix if needed - this project is still experimental)
-1. choose a voter name (valid choices are "alice", "bob", "charles")
+1. choose a voter name (valid choices are `alice`, `bob`, `charles`)
 1. In each `trust_authority.py` shell, look for the corresponding hash value for the chosen voterID
-1. in the `invites_client.py` prompt, type the **full secret ID** of a voter : it is simply a concatenation of <hash_0><hash_1>...<hash_n> ; copy the value of `hex(inviteID)` (ie. '0x7f7f2965a890')
+1. in the `invites_client.py` prompt, type the **full secret ID** of a voter : it is simply a concatenation of `<hash_0><hash_1>...<hash_n>` ; copy the value of `hex(inviteID)` (ie. `0x7f7f2965a890`)
 1. in the `voter_cli.py` prompt, enter the hex value of inviteID and press `[enter]` ; you are then prompted for the answer to the question
-1. once the answer is confirmed and sent, you receive a secret hex verification key that you can use in combination with your inviteID and your answer to make sure your vote weas not tampered with (TODO)
+1. once the answer is confirmed and sent, you receive a secret hex verification key that you can use in combination with your inviteID and your answer to make sure your vote was not tampered with (TODO)
 1. visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) (unless you have changed this) to check poll progress and results
 
 
 # Problems with voting mechanisms (traditional and electronic)
 
-* **complexity and missing transparency**: these are probably the most important problems, especially with electronic voting ; this will not be discussed as a whole, but rather broken down into sub-parts, just keep on reading.
+* **complexity and lack of transparency**: these are probably the most important problems, especially with electronic voting ; this will not be discussed as a whole, but rather broken down into sub-parts, just keep on reading.
 * **compiler trust**: compiling the software is one thing, compiling results is another. The former is a part of *installation validation*, while for the latter it boggles down to counting the votes and compiling the results in a way that is easy to read (number of *'Yes'* and *'No'* votes, number of abstentees, and so on) ; the current mechanisms allows individual voters to verify their vote is kept untampered with until the ballot is closed and deemed valid. It is also made possible for observers to make a statistical[^distribution] analysis of the votes (number of votes, choices) with a brute-force approach[^bruteforce] ; the list of electors is public (this is fact is not very different than a phone book, or checking the names on the mailboxes along a street ; this allows for a form of peer verification).
 * **blank votes** are usually unaccounted for : this makes a lot of people unhappy ; furthermore, it is generally not possible to request answers beyond the scope of *yes* or *no*. The current paradigm fixes both of these issues, while encouraging people to submit their vote even if they have no opinion or disagree entirely with the object because it helps preventing their vote from being stolen.
 * **software validation**: computer software is usually not understood by the majority of voters, making it close to impossible for them to review the code : code has to be well segmented and as simple as possible when it comes to the critical parts.

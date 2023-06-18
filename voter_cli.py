@@ -181,4 +181,10 @@ if __name__ == '__main__':
 		voter_id = enc(argv[1])
 	except IndexError:
 		voter_id = enc(input("Voter ID: "))
+
+	print("""Welcome to the voter command-line client.
+
+This TC/IP client allows an individual to cast votes with ballot authorities,
+and review them later in order to verify the votes have not been tampered with.
+""")
 	asyncio.run( main( voter_id ) )

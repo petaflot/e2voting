@@ -54,5 +54,21 @@ if __name__ == '__main__':
 		from constants import LISTEN as host,  PORT_INVITES as port
 		print(f"Connecting to {host}:{port}")
 
+	print("""Welcome to the invites client.
+
+This client is meant to be used when there is no authenticated TCP/IP connection
+between the ballot authority and voters : in this case, voters are expected to
+show in person in the ballotter's office and provide proof of identification
+such as:
+	- ID papers
+	- secret handshake
+	- biometric identification
+	- <you-name-it>
+	- a combination of the above
+Once the voter has been identified by the clerk (you), let them provide their
+credentials (the full voter ID composed of the concatenation of the secret hashes
+provided by trust authorities) so that they can get their hex inviteID (note:
+the voter alone should be able to see the inviteID!!)
+""")
 
 	asyncio.run( main( host, port ) )
